@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Subtitles</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div id="toolbar">
+        <div class="logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
+            AI Subtitles
+        </div>
+        <div class="controls-group">
+            <select id="audioSource">
+                <option value="">Default Microphone</option>
+            </select>
+            <button id="startBtn" class="btn-primary">Start Listening</button>
+            <button id="stopBtn" class="btn-secondary" disabled>Stop</button>
+        </div>
+        <div id="statusIndicator">
+            <span class="dot"></span>
+            <span id="statusText">Ready</span>
+        </div>
+    </div>
+
+    <div id="subtitles-container">
+        <!-- Scrollable History Zone -->
+        <div id="history-box"></div>
+        
+        <!-- Live Caption Zone -->
+        <div id="current-box">
+            <div class="en-text" id="current-en">Waiting for audio...</div>
+            <div class="vi-text" id="current-vi">Please grant mic permissions and speak.</div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

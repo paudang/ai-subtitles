@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+websockets
+faster-whisper
+transformers
+torch
+torchaudio
+soundfile
+python-multipart
+ctranslate2

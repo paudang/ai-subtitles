@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environment
+venv/
+env/
+.venv/
+
+# Environment variables
+.env
+
+# AI Models (Do not commit heavy weights to Git)
+nllb-200-distilled-1.3B-ct2/
+*.bin
+*.pt
+*.safetensors
+
+# IDE / OS Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Temporary Media
+*.webm
+*.wav
+*.mp3
