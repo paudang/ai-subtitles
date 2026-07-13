@@ -356,6 +356,17 @@ select option {
     100% { opacity: 0.7; }
 }
 
+/* Strict Append Word Animation (Zero Jitter) */
+.word-appear {
+    display: inline-block; /* Prevents font kerning jitter across word boundaries */
+    animation: fadeInWord 0.15s ease forwards;
+}
+
+@keyframes fadeInWord {
+    from { opacity: 0; transform: translateY(2px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 /* Animations */
 .fade-up {
     animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;

@@ -97,6 +97,57 @@ function formatSentences(text) {
 
 let partialTimeout = null;
 let latestPartialData = null;
+let liveWords = []; // Cache of currently rendered words for strict append
+
+// Normalizes text by removing spaces, punctuation, and lowercasing
+function normalizeText(text) {
+    return text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+}
+
+// Strict Append Algorithm (YouTube / Apple Live Transcribe style)
+// Guarantees zero jitter by NEVER modifying or replacing existing DOM nodes.
+function updateLiveBoxStrictAppend(newRawText) {
+    if (!newRawText) return;
+    const newWords = newRawText.trim().split(/\s+/).filter(w => w.length > 0);
+    
+    // Ignore deletions or formatting tweaks. Once a word is on screen, it stays locked 
+    // to prevent jitter, until the sentence finalizes and moves to history.
+    if (newWords.length <= liveWords.length) return;
+    
+    // Append only truly new words
+    for (let i = liveWords.length; i < newWords.length; i++) {
+        let isFirst = (i === 0);
+        let isNewSentence = false;
+        
+        if (i > 0) {
+            let prevWord = newWords[i-1];
+            let thisWord = newWords[i];
+            if (/[.!?]$/.test(prevWord) && /^\p{Lu}/u.test(thisWord)) {
+                let wordNoPunc = prevWord.replace(/[.!?]+$/, '').toLowerCase();
+                const abbreviations = ['mr', 'mrs', 'ms', 'dr', 'prof', 'sr', 'jr', 'st', 'vs', 'etc', 'ts', 'ths', 'bs', 'gs', 'pgs'];
+                if (!abbreviations.includes(wordNoPunc) && !(wordNoPunc.length === 1 && prevWord.endsWith('.'))) {
+                    isNewSentence = true;
+                }
+            }
+        }
+        
+        if (isNewSentence) {
+            currentEn.appendChild(document.createElement('br'));
+            isFirst = true;
+        }
+        
+        if (!isFirst) {
+            currentEn.appendChild(document.createTextNode(" "));
+        }
+        
+        let span = document.createElement('span');
+        span.textContent = newWords[i];
+        span.className = 'word-appear'; 
+        currentEn.appendChild(span);
+        
+        liveWords.push(newWords[i]);
+    }
+}
 
 function connectWebSocket() {
     ws = new WebSocket(`ws://${window.location.host}/ws`);
@@ -132,24 +183,11 @@ function connectWebSocket() {
         if (data.status === "partial") {
             latestPartialData = { en: data.en, vi: data.vi };
             
-            // Throttle rendering to max 10 FPS to eliminate visual layout thrashing/jittering
-            if (!partialTimeout) {
-                partialTimeout = setTimeout(() => {
-                    if (latestPartialData) {
-                        currentEn.innerHTML = formatSentences(latestPartialData.en);
-                        currentVi.innerHTML = ''; // Keep Vietnamese empty in the bottom box
-                    }
-                    partialTimeout = null;
-                }, 100);
-            }
+            // Apply the zero-jitter strict append logic immediately!
+            updateLiveBoxStrictAppend(data.en);
             
-            // NO fade-up animation here to prevent jerkiness!
         } else {
             // It's final! 
-            if (partialTimeout) {
-                clearTimeout(partialTimeout);
-                partialTimeout = null;
-            }
             
             const formattedEn = formatSentences(data.en);
             const formattedVi = formatSentences(data.vi);
@@ -174,6 +212,7 @@ function connectWebSocket() {
             currentEn.innerHTML = '';
             currentVi.innerHTML = '';
             latestPartialData = null; // Reset fallback
+            liveWords = []; // Reset strict append cache
         }
         
         if (isRecording) {
