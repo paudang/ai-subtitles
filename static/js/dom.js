@@ -1,0 +1,16 @@
+export const DOM = {
+    audioSourceSelect: document.getElementById('audioSource'),
+    voiceBtn: document.getElementById('voiceBtn'),
+    iconMic: document.getElementById('icon-mic'),
+    iconStop: document.getElementById('icon-stop'),
+    settingsBtn: document.getElementById('settingsBtn'),
+    settingsPanel: document.getElementById('settingsPanel'),
+    themeToggleBtn: document.getElementById('themeToggleBtn'),
+    iconMoon: document.getElementById('icon-moon'),
+    iconSun: document.getElementById('icon-sun'),
+    statusIndicator: document.getElementById('statusIndicator'),
+    statusText: document.getElementById('statusText'),
+    historyBox: document.getElementById('history-box'),
+    currentEn: document.getElementById('current-en'),
+    currentVi: document.getElementById('current-vi'),
+};
