@@ -8,21 +8,41 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div id="toolbar">
+    <header id="header">
         <div class="logo">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
             AI Subtitles
         </div>
-        <div class="controls-group">
+        
+        <div class="header-actions">
+            <div id="statusIndicator">
+                <span class="dot"></span>
+                <span id="statusText">Ready</span>
+            </div>
+            
+            <button id="themeToggleBtn" class="icon-btn" aria-label="Toggle Theme">
+                <!-- Moon icon (default) -->
+                <svg id="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                <!-- Sun icon (hidden by default) -->
+                <svg id="icon-sun" style="display: none;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="4.22" x2="19.78" y2="5.64"></line></svg>
+            </button>
+
+            <button id="settingsBtn" class="icon-btn" aria-label="Settings">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Settings Panel (Hidden by default) -->
+    <div id="settingsPanel" class="hidden">
+        <label for="audioSource">Microphone</label>
+        <div class="custom-select-wrapper">
             <select id="audioSource">
                 <option value="">Default Microphone</option>
             </select>
-            <button id="startBtn" class="btn-primary">Start Listening</button>
-            <button id="stopBtn" class="btn-secondary" disabled>Stop</button>
-        </div>
-        <div id="statusIndicator">
-            <span class="dot"></span>
-            <span id="statusText">Ready</span>
+            <div class="custom-select-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
         </div>
     </div>
 
@@ -30,11 +50,22 @@
         <!-- Scrollable History Zone -->
         <div id="history-box"></div>
         
-        <!-- Live Caption Zone -->
+        <!-- Live Caption Zone (Fixed at bottom) -->
         <div id="current-box">
             <div class="en-text" id="current-en">Waiting for audio...</div>
             <div class="vi-text" id="current-vi">Please grant mic permissions and speak.</div>
         </div>
+    </div>
+
+    <!-- Big Tech Central Voice Button -->
+    <div id="voice-action-zone">
+        <div class="pulse-ring"></div>
+        <button id="voiceBtn" class="voice-btn">
+            <!-- Default Mic Icon -->
+            <svg id="icon-mic" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
+            <!-- Stop Icon (Hidden initially) -->
+            <svg id="icon-stop" style="display: none;" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12"></rect></svg>
+        </button>
     </div>
 
     <script src="/static/app.js"></script>

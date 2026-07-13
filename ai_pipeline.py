@@ -4,6 +4,7 @@ from functools import lru_cache
 from faster_whisper import WhisperModel
 from transformers import AutoTokenizer
 import ctranslate2
+import sys
 
 # --- Fix missing CUDA DLL (cublas64_12.dll) on Windows ---
 if os.name == 'nt':
@@ -32,10 +33,13 @@ class AIPipeline:
     def __init__(self):
         print("[AI] Initializing AIPipeline (V3 CTranslate2)...")
         
-        # 1. Initialize Whisper (STT) on GPU
-        print("[AI] Loading Whisper Model (faster-whisper - small.en)...")
-        # float16 optimizes VRAM on RTX 2060
-        self.whisper = WhisperModel("small.en", device="cuda", compute_type="float16")
+        # --- Cross-Platform Compatibility ---
+        self.device = "cuda" if sys.platform != "darwin" else "cpu"
+        self.compute_type = "float16" if self.device == "cuda" else "int8"
+        
+        # 1. Initialize Whisper (STT)
+        print(f"[AI] Loading Whisper Model (faster-whisper - small.en) on {self.device}...")
+        self.whisper = WhisperModel("small.en", device=self.device, compute_type=self.compute_type)
         
         # 2. Initialize NLLB (Translation) via CTranslate2
         print("[AI] Loading Translation Model (NLLB 1.3B - CTranslate2)...")
@@ -50,10 +54,11 @@ class AIPipeline:
             os._exit(1)
             
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        # Load CTranslate2 Translator on GPU using int8_float16 for max speed
-        self.translator = ctranslate2.Translator(ct2_model_path, device="cuda", compute_type="int8_float16")
+        # Load CTranslate2 Translator using the appropriate compute type
+        ct2_compute_type = "int8_float16" if self.device == "cuda" else "int8"
+        self.translator = ctranslate2.Translator(ct2_model_path, device=self.device, compute_type=ct2_compute_type)
         
-        print("[AI] Models loaded successfully into VRAM!")
+        print(f"[AI] Models loaded successfully into {self.device.upper()}!")
 
     @lru_cache(maxsize=1000)
     def _translate_cached(self, english_text: str) -> str:
@@ -87,7 +92,7 @@ class AIPipeline:
             beam = 5 if is_final else 1
             
             # VAD filter adds overhead. Only use it for the final cleanup pass.
-            use_vad = True if is_final else False
+            use_vad = True
             
             # HUGE SPEEDUP: Force language="en" to skip the 10-20ms language detection phase
             segments, info = self.whisper.transcribe(
@@ -95,9 +100,19 @@ class AIPipeline:
                 beam_size=beam, 
                 vad_filter=use_vad,
                 language="en",
+                condition_on_previous_text=False,
                 without_timestamps=True
             )
-            english_text = " ".join([segment.text for segment in segments]).strip()
+            
+            valid_segments = []
+            for segment in segments:
+                # Filter out pure noise/hallucinations
+                if segment.no_speech_prob < 0.6:
+                    valid_segments.append(segment.text)
+                else:
+                    print(f"[AI] Ignored hallucination (no_speech_prob={segment.no_speech_prob:.2f}): {segment.text}")
+                    
+            english_text = " ".join(valid_segments).strip()
             return english_text
         except Exception as e:
             print(f"[ERROR] STT failed: {e}")

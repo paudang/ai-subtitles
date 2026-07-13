@@ -16,12 +16,21 @@ Designed for high-performance rendering, zero-disk I/O processing, and zero-late
 - **AI Models:** `faster-whisper` (STT), `facebook/nllb-200-distilled-600M` (Translation).
 - **Frontend:** HTML5, Vanilla JS, Web Audio API, WebSockets.
 
-## Installation
+## Cross-Platform Local Deployment
 
-Ensure you have Python 3.10+ installed and an NVIDIA GPU (CUDA toolkit recommended).
+AI Subtitles is designed to run locally with native execution on both Windows and Mac (Apple Silicon / Intel). The backend will automatically detect your OS and optimize the hardware acceleration (CUDA for Windows, CPU/MPS fallback for Mac).
 
+### Installation
+
+**1. Clone the repository and install dependencies:**
 ```bash
 pip install -r requirements.txt
+```
+
+**2. Setup CTranslate2 Models:**
+Download and convert the translation model into the CTranslate2 format. Run the following command in your terminal:
+```bash
+ct2-transformers-converter --model facebook/nllb-200-distilled-1.3B --output_dir nllb-200-distilled-1.3B-ct2 --quantization int8_float16
 ```
 
 ## Running the Server
@@ -35,3 +44,21 @@ python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 2. Grant microphone permissions.
 3. Select your Audio Source (Mic or Stereo Mix).
 4. Click **Start Listening** and speak English!
+
+## End-to-End Testing
+
+We provide an automated End-to-End (E2E) testing suite using Playwright. This suite simulates a real user by injecting audio directly into a virtual microphone and records the entire UI interaction.
+
+**Prerequisites:**
+```bash
+pip install playwright
+playwright install chromium
+```
+
+**Running Tests:**
+1. Ensure the server is running on port 8000.
+2. Run the test script from the project root:
+```bash
+python tests/test_ui.py
+```
+3. The results, including screen recordings (`.webm`) and extracted transcriptions (`transcription.txt`), will be saved in the `tests/results/` directory.

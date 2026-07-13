@@ -1,6 +1,12 @@
 const audioSourceSelect = document.getElementById('audioSource');
-const startBtn = document.getElementById('startBtn');
-const stopBtn = document.getElementById('stopBtn');
+const voiceBtn = document.getElementById('voiceBtn');
+const iconMic = document.getElementById('icon-mic');
+const iconStop = document.getElementById('icon-stop');
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsPanel = document.getElementById('settingsPanel');
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+const iconMoon = document.getElementById('icon-moon');
+const iconSun = document.getElementById('icon-sun');
 const statusIndicator = document.getElementById('statusIndicator');
 const statusText = document.getElementById('statusText');
 const historyBox = document.getElementById('history-box');
@@ -20,8 +26,8 @@ let analyser;
 let microphone;
 let javascriptNode;
 let silenceStart = Date.now();
-const SILENCE_DELAY = 600; // ms (Giảm xuống 600ms để bắt được những khoảng nghỉ/thở cực ngắn của người nói nhanh)
-const MAX_CHUNK_TIME = 12000; // Giới hạn 12 giây cho một câu quá dài
+const SILENCE_DELAY = 600; // ms (Lowered to 600ms to catch very short pauses from fast speakers)
+const MAX_CHUNK_TIME = 12000; // 12 seconds limit for excessively long sentences
 const VOLUME_THRESHOLD = 3; 
 let isSpeaking = false;
 let mixContext = null; // Manage mixContext lifecycle
@@ -36,24 +42,57 @@ function updateStatus(state, text) {
 
 async function getMicrophones() {
     try {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
+        // DO NOT call getUserMedia on page load, it blocks iOS Safari!
         const devices = await navigator.mediaDevices.enumerateDevices();
         const audioInputDevices = devices.filter(device => device.kind === 'audioinput');
         
+        audioSourceSelect.innerHTML = '<option value="">Default Microphone</option>';
+        
         audioInputDevices.forEach(device => {
-            const option = document.createElement('option');
-            option.value = device.deviceId;
-            option.text = device.label || `Microphone ${audioSourceSelect.length + 1}`;
-            audioSourceSelect.appendChild(option);
+            if (device.deviceId && device.deviceId !== 'default' && device.deviceId !== '') {
+                const option = document.createElement('option');
+                option.value = device.deviceId;
+                option.text = device.label || `Microphone ${audioSourceSelect.length}`;
+                audioSourceSelect.appendChild(option);
+            }
         });
         
         // Add special option: Mix 2 audio streams
         const mixOption = document.createElement('option');
         mixOption.value = 'mic_and_system';
-        mixOption.text = '🎤 Mic + 💻 System Audio (Share Tab)';
+        mixOption.text = 'Mic + System Audio (Share Tab)';
         audioSourceSelect.appendChild(mixOption);
     } catch (err) {
         console.error("[ERROR] Failed to enumerate devices:", err);
+    }
+}
+
+// BIG TECH SECRET: Word-level DOM Diffing
+// Instead of replacing the entire paragraph, we split it into words and spaces.
+// We only update the specific TextNode that changed. This prevents the browser from
+// destroying and rebuilding the layout tree, completely eliminating jitter/flicker!
+function renderSmartText(container, newText) {
+    const tokens = newText.split(/(\s+)/);
+    const childNodes = container.childNodes;
+    
+    let i = 0;
+    while (i < tokens.length) {
+        const token = tokens[i];
+        if (i < childNodes.length) {
+            // Only update DOM if the text actually changed
+            if (childNodes[i].textContent !== token) {
+                childNodes[i].textContent = token;
+            }
+        } else {
+            // Append new text node
+            container.appendChild(document.createTextNode(token));
+        }
+        i++;
+    }
+    
+    // Remove any leftover nodes if the new string is shorter (e.g. AI removed words)
+    while (childNodes.length > tokens.length) {
+        container.removeChild(container.lastChild);
     }
 }
 
@@ -75,25 +114,32 @@ function connectWebSocket() {
         }
         
         if (data.status === "partial") {
-            // Render English only for real-time box (like Zoom)
-            currentEn.innerText = data.en;
+            // Apply Big Tech Smart Rendering
+            renderSmartText(currentEn, data.en);
+            
             currentVi.innerHTML = ''; // Keep Vietnamese empty in the bottom box
             
             // NO fade-up animation here to prevent jerkiness!
         } else {
-            // It's final! Instantly push to history!
+            // It's final! 
+            // We NO LONGER merge sentences. The user wants strict alternating (En, Vi, En, Vi).
+            // This also completely prevents massive paragraphs from forming and eliminates all replace jitter.
+            
             const historyItem = document.createElement('div');
             historyItem.className = 'history-item fade-up';
             historyItem.innerHTML = `
                 <div class="en-text">${data.en}</div>
                 <div class="vi-text">${data.vi}</div>
             `;
+            // Append it to historyBox
             historyBox.appendChild(historyItem);
             
             while (historyBox.children.length > MAX_HISTORY_NODES) {
                 historyBox.removeChild(historyBox.firstChild);
             }
-            historyBox.scrollTop = historyBox.scrollHeight;
+            
+            // Smooth scroll to bottom
+            historyBox.scrollTo({ top: historyBox.scrollHeight, behavior: 'smooth' });
             
             // Clear the real-time box so it's clean for the next sentence
             currentEn.innerHTML = '';
@@ -118,6 +164,14 @@ async function startListening() {
     const deviceId = audioSourceSelect.value;
     let stream;
 
+    // VERY IMPORTANT: Initialize AudioContext synchronously inside the click handler!
+    // If we wait for getDisplayMedia() to resolve, the user gesture expires (takes > 2s)
+    // and the browser will create the AudioContext in a "suspended" state (SILENCE).
+    if (deviceId === 'mic_and_system') {
+        mixContext = new AudioContext();
+    }
+    audioContext = new AudioContext(); // For VAD
+
     try {
         if (deviceId === 'mic_and_system') {
             // 1. Get Microphone stream
@@ -138,7 +192,6 @@ async function startListening() {
             }
             
             // 3. Mix these 2 streams together using Web Audio API
-            mixContext = new AudioContext();
             const destination = mixContext.createMediaStreamDestination();
             
             const micSource = mixContext.createMediaStreamSource(micStream);
@@ -171,8 +224,7 @@ async function startListening() {
             }
         };
 
-        // Initialize AudioContext for VAD
-        audioContext = new AudioContext();
+        // Initialize VAD Analyser using the already-created audioContext
         analyser = audioContext.createAnalyser();
         microphone = audioContext.createMediaStreamSource(stream);
         javascriptNode = audioContext.createScriptProcessor(2048, 1, 1);
@@ -189,9 +241,14 @@ async function startListening() {
         isSpeaking = false;
         isEndingSentence = false;
         
-        startBtn.disabled = true;
-        stopBtn.disabled = false;
+        voiceBtn.classList.add('recording');
+        iconMic.style.display = 'none';
+        iconStop.style.display = 'block';
         updateStatus('listening', 'Listening...');
+        
+        // Clear the initial placeholder text once mic is successfully granted
+        currentEn.innerText = '';
+        currentVi.innerHTML = '';
 
         let speechStart = 0;
 
@@ -211,9 +268,9 @@ async function startListening() {
                     let silenceDuration = Date.now() - silenceStart;
                     let speakDuration = Date.now() - speechStart;
                     
-                    // Cắt bình thường nếu im lặng > 600ms
-                    // Ép cắt (Desperate cut) nếu câu dài > 12s VÀ có một khoảng lặng rất nhỏ (250ms) giữa các từ
-                    // Điều này ĐẢM BẢO tuyệt đối không bao giờ cắt vỡ giữa chừng một từ đang phát âm!
+                    // Normal chunking if silence > 600ms
+                    // Desperate cut if sentence is too long (> 12s) AND there is a very small pause (250ms) between words
+                    // This ENSURES we never accidentally cut in the middle of a spoken word!
                     if (silenceDuration > SILENCE_DELAY || (speakDuration > MAX_CHUNK_TIME && silenceDuration > 250)) {
                         if(mediaRecorder.state === 'recording') {
                             isEndingSentence = true;
@@ -230,7 +287,7 @@ async function startListening() {
 
     } catch (err) {
         console.error("[ERROR] Mic access denied:", err);
-        alert("Microphone access is required for AI Subtitles.");
+        alert(`Microphone access failed: ${err.name} - ${err.message}\n\nPlease tap the 'aA' icon in Safari, select 'Website Settings', allow Microphone, and refresh the page.`);
     }
 }
 
@@ -262,14 +319,46 @@ function stopListening() {
     }
     
     isRecording = false;
-    startBtn.disabled = false;
-    stopBtn.disabled = true;
+    voiceBtn.classList.remove('recording');
+    iconMic.style.display = 'block';
+    iconStop.style.display = 'none';
     updateStatus('active', 'Stopped');
 }
 
+// Event Listeners
+voiceBtn.addEventListener('click', () => {
+    if (isRecording) {
+        stopListening();
+    } else {
+        startListening();
+    }
+});
+
+settingsBtn.addEventListener('click', () => {
+    settingsPanel.classList.toggle('hidden');
+});
+
+// Theme Toggle Logic
+function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+    if (theme === 'light') {
+        iconMoon.style.display = 'none';
+        iconSun.style.display = 'block';
+    } else {
+        iconMoon.style.display = 'block';
+        iconSun.style.display = 'none';
+    }
+}
+
+themeToggleBtn.addEventListener('click', () => {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+});
+
 // Init
+const savedTheme = localStorage.getItem('theme') || 'dark';
+setTheme(savedTheme);
 getMicrophones();
 connectWebSocket();
-
-startBtn.addEventListener('click', startListening);
-stopBtn.addEventListener('click', stopListening);

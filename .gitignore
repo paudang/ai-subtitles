@@ -28,3 +28,12 @@ Thumbs.db
 *.webm
 *.wav
 *.mp3
+*.mp4
+
+# But keep test audios for E2E
+!tests/audios_wav/*.wav
+!tests/audios/*.mp4
+!tests/audios/*.mp3
+
+# Ignore E2E Test Results
+tests/results/

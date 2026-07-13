@@ -1,5 +1,5 @@
 :root {
-    --bg-color: #0d1117;
+    --bg-color: #000000;
     --toolbar-bg: rgba(22, 27, 34, 0.85);
     --text-primary: #e6edf3;
     --text-muted: #7d8590;
@@ -8,6 +8,15 @@
     --danger: #f85149;
     --success: #2ea043;
     --vi-highlight: #e3b341;
+}
+
+:root[data-theme="light"] {
+    --bg-color: #ffffff;
+    --toolbar-bg: rgba(255, 255, 255, 0.85);
+    --text-primary: #111111;
+    --text-muted: #666666;
+    --accent: #0969da;
+    --accent-hover: #0550ae;
 }
 
 body, html {
@@ -21,8 +30,8 @@ body, html {
     overflow: hidden;
 }
 
-/* Premium Toolbar */
-#toolbar {
+/* Premium Header */
+#header {
     position: fixed;
     top: 0;
     left: 0;
@@ -47,54 +56,184 @@ body, html {
     color: var(--text-primary);
 }
 
-.controls-group {
+.header-actions {
     display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.icon-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.icon-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Settings Panel */
+#settingsPanel {
+    position: fixed;
+    top: 60px;
+    right: 24px;
+    background: var(--toolbar-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(128,128,128,0.2);
+    padding: 16px;
+    border-radius: 12px;
+    z-index: 99;
+    display: flex;
+    flex-direction: column;
     gap: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    min-width: 250px;
+}
+
+#settingsPanel.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-10px);
+}
+
+#settingsPanel label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.custom-select-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.custom-select-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--text-muted);
+    display: flex;
     align-items: center;
 }
 
 select {
-    padding: 8px 12px;
-    border-radius: 6px;
-    background: #010409;
+    width: 100%;
+    padding: 12px 36px 12px 16px;
+    border-radius: 8px;
+    background: rgba(128, 128, 128, 0.1);
     color: var(--text-primary);
-    border: 1px solid #30363d;
+    border: 1px solid rgba(128, 128, 128, 0.2);
     outline: none;
     font-size: 14px;
-}
-
-button {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
     cursor: pointer;
-    transition: all 0.2s ease;
+    font-family: inherit;
 }
 
-.btn-primary {
-    background-color: var(--accent);
+select:focus {
+    border-color: var(--accent);
+}
+
+/* Tùy chỉnh màu sắc khi xổ list (Option) theo yêu cầu của User */
+select option {
+    background-color: #ffffff;
+    color: #000000; /* Dark Mode: Trong list là đen */
+}
+
+:root[data-theme="light"] select option {
+    background-color: #000000;
+    color: #ffffff; /* Light Mode: Trong list là trắng */
+}
+
+/* Big Tech Voice Button Zone */
+#voice-action-zone {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    padding-bottom: max(32px, env(safe-area-inset-bottom));
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(0deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 50%, rgba(0,0,0,0) 100%);
+    pointer-events: none; /* Let clicks pass through background */
+}
+
+#voice-action-zone > * {
+    pointer-events: auto; /* Re-enable clicks on button */
+}
+
+.voice-btn {
+    width: 72px;
+    height: 72px;
+    border-radius: 36px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: none;
+    cursor: pointer;
+    background: white;
+    color: black;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 8px 32px rgba(128,128,128,0.2);
+    z-index: 2;
+}
+
+:root[data-theme="light"] .voice-btn {
+    background: #111111;
     color: white;
 }
 
-.btn-primary:hover:not(:disabled) {
-    background-color: var(--accent-hover);
+.voice-btn:active {
+    transform: scale(0.9);
 }
 
-.btn-secondary {
-    background-color: #21262d;
-    color: var(--text-primary);
-    border: 1px solid #30363d;
+/* Recording State */
+.voice-btn.recording {
+    background: var(--danger);
+    color: white;
+    box-shadow: 0 0 40px rgba(248, 81, 73, 0.6);
 }
 
-.btn-secondary:hover:not(:disabled) {
-    background-color: #30363d;
+/* Pulse Animation */
+.pulse-ring {
+    position: absolute;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    z-index: 1;
+    opacity: 0;
+    pointer-events: none;
 }
 
-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+.voice-btn.recording ~ .pulse-ring,
+.pulse-ring.active {
+    animation: pulse 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    background: rgba(248, 81, 73, 0.4);
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 0.8; }
+    70% { transform: scale(2.5); opacity: 0; }
+    100% { transform: scale(3); opacity: 0; }
 }
 
 /* Status Indicator */
@@ -126,10 +265,10 @@ button:disabled {
 #subtitles-container {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 100dvh; /* Use dynamic viewport height for mobile */
     max-width: 1200px;
     margin: 0 auto;
-    padding: 80px 24px 32px 24px;
+    padding: 80px 24px 140px 24px; /* Bottom padding for Action Bar */
     box-sizing: border-box;
 }
 
@@ -139,6 +278,11 @@ button:disabled {
     display: flex;
     flex-direction: column;
     gap: 24px;
+    align-items: flex-start;
+    text-align: left;
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
     padding-bottom: 40px;
     scroll-behavior: smooth;
     scrollbar-width: thin;
@@ -171,13 +315,19 @@ button:disabled {
 }
 
 #current-box {
-    min-height: 160px;
+    height: 220px; /* Fixed height to prevent vertical jitter */
     padding: 24px 16px;
-    border-top: 1px solid rgba(255,255,255,0.05);
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
-    background: linear-gradient(180deg, rgba(13,17,23,0) 0%, rgba(13,17,23,1) 100%);
+    justify-content: flex-start; /* ANCHOR TO TOP: Lines will never bounce vertically! */
+    align-items: flex-start; 
+    text-align: left;
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+    font-variant-ligatures: none; /* Prevent letters from shifting when nearby letters change */
+    border-top: 1px solid rgba(255, 255, 255, 0.05); /* Subtle separator */
 }
 
 #current-box .en-text {
@@ -190,10 +340,20 @@ button:disabled {
 #current-box .vi-text {
     font-size: 38px;
     font-weight: 600;
-    color: var(--vi-highlight);
+    color: var(--text-primary);
     line-height: 1.4;
-    text-shadow: 0 4px 12px rgba(0,0,0,0.5);
     letter-spacing: -0.5px;
+}
+
+/* Make current-box text pulse slightly when typing to show it's active */
+#current-en:not(:empty) {
+    animation: textPulse 2s infinite ease-in-out;
+}
+
+@keyframes textPulse {
+    0% { opacity: 0.7; }
+    50% { opacity: 1; }
+    100% { opacity: 0.7; }
 }
 
 /* Animations */
@@ -238,55 +398,41 @@ button:disabled {
 
 /* Responsive Mobile Layout */
 @media (max-width: 768px) {
-    #toolbar {
-        flex-direction: column;
-        padding: 12px;
-        gap: 12px;
+    #header {
+        padding: 12px 16px;
     }
 
-    .logo {
-        width: 100%;
-        justify-content: center;
-        margin-bottom: 4px;
-    }
-
-    .controls-group {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        width: 100%;
-        gap: 8px;
+    #settingsPanel {
+        top: 60px;
+        right: 16px;
+        left: 16px; /* Full width on mobile */
     }
 
     select {
-        grid-column: 1 / -1;
-        width: 100%;
-    }
-
-    button {
-        width: 100%;
-    }
-
-    #statusIndicator {
-        width: 100%;
-        justify-content: center;
-        margin-top: 4px;
+        padding: 12px;
+        font-size: 15px;
     }
 
     #subtitles-container {
-        padding: 140px 16px 20px 16px; /* Tăng padding top vì thanh toolbar giờ cao hơn */
+        padding: 70px 16px 140px 16px; /* More bottom padding for big voice button */
     }
 
     #history-box {
         gap: 16px;
     }
 
+    .history-item {
+        padding-left: 0;
+        border-left: none;
+    }
+
     #current-box {
-        min-height: 120px;
+        height: 150px; /* Fixed height on mobile */
         padding: 16px 8px;
     }
 
     #current-box .vi-text {
-        font-size: 28px; /* Giảm cỡ chữ trên điện thoại */
+        font-size: 28px;
     }
 
     #current-box .en-text {
