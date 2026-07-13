@@ -305,12 +305,12 @@ select option {
 }
 
 .history-item .en-text {
-    font-size: 16px;
+    font-size: 20px;
     color: var(--text-muted);
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 }
 .history-item .vi-text {
-    font-size: 22px;
+    font-size: 24px;
     color: var(--text-primary);
 }
 
@@ -338,7 +338,7 @@ select option {
 }
 
 #current-box .vi-text {
-    font-size: 38px;
+    font-size: 28px;
     font-weight: 600;
     color: var(--text-primary);
     line-height: 1.4;

@@ -67,34 +67,36 @@ async function getMicrophones() {
     }
 }
 
-// BIG TECH SECRET: Word-level DOM Diffing
-// Instead of replacing the entire paragraph, we split it into words and spaces.
-// We only update the specific TextNode that changed. This prevents the browser from
-// destroying and rebuilding the layout tree, completely eliminating jitter/flicker!
-function renderSmartText(container, newText) {
-    const tokens = newText.split(/(\s+)/);
-    const childNodes = container.childNodes;
+// Auto-break long continuous audio chunks into separate sentences using <br>
+function formatSentences(text) {
+    if (!text) return "";
     
-    let i = 0;
-    while (i < tokens.length) {
-        const token = tokens[i];
-        if (i < childNodes.length) {
-            // Only update DOM if the text actually changed
-            if (childNodes[i].textContent !== token) {
-                childNodes[i].textContent = token;
-            }
-        } else {
-            // Append new text node
-            container.appendChild(document.createTextNode(token));
+    // Clean up weird translation artifacts where titles get periods they shouldn't have
+    let cleaned = text.replace(/Tiến sĩ\.\s+/gi, "Tiến sĩ ");
+    cleaned = cleaned.replace(/Bác sĩ\.\s+/gi, "Bác sĩ ");
+    cleaned = cleaned.replace(/Giáo sư\.\s+/gi, "Giáo sư ");
+    cleaned = cleaned.replace(/Thạc sĩ\.\s+/gi, "Thạc sĩ ");
+    
+    const abbreviations = ['mr', 'mrs', 'ms', 'dr', 'prof', 'sr', 'jr', 'st', 'vs', 'etc', 'ts', 'ths', 'bs', 'gs', 'pgs'];
+    
+    // \p{L} matches any unicode letter. \p{Lu} matches any uppercase unicode letter.
+    // This perfectly supports Vietnamese accents natively without a massive character list!
+    return cleaned.replace(/([\p{L}]+)?([.!?])\s+(?=\p{Lu})/gu, (match, word, punc) => {
+        // Don't break if the word is a known abbreviation (Dr., Mr., etc)
+        if (word && abbreviations.includes(word.toLowerCase())) {
+            return match;
         }
-        i++;
-    }
-    
-    // Remove any leftover nodes if the new string is shorter (e.g. AI removed words)
-    while (childNodes.length > tokens.length) {
-        container.removeChild(container.lastChild);
-    }
+        // Don't break on single initials (e.g. John F. Kennedy)
+        if (word && word.length === 1 && punc === '.') {
+            return match;
+        }
+        
+        return (word || "") + punc + "<br>";
+    });
 }
+
+let partialTimeout = null;
+let latestPartialData = null;
 
 function connectWebSocket() {
     ws = new WebSocket(`ws://${window.location.host}/ws`);
@@ -107,29 +109,56 @@ function connectWebSocket() {
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         
-        // If AI returns empty (due to noise or silence), just keep previous state
         if (!data.en || data.en.trim() === "") {
-            if (isRecording) updateStatus('listening', 'Listening...');
-            return;
+            if (data.status === "final") {
+                // Whisper's final pass returned empty (often happens if it filters it as noise).
+                // BUT the user saw partial text on screen! If we just delete it, they think it's a bug.
+                // Fallback to the last known partial text to prevent "disappearing text"!
+                if (latestPartialData && latestPartialData.en && latestPartialData.en.trim() !== "") {
+                    data.en = latestPartialData.en;
+                    data.vi = latestPartialData.vi || "";
+                } else {
+                    currentEn.innerHTML = '';
+                    currentVi.innerHTML = '';
+                    if (isRecording) updateStatus('listening', 'Listening...');
+                    return;
+                }
+            } else {
+                if (isRecording) updateStatus('listening', 'Listening...');
+                return;
+            }
         }
         
         if (data.status === "partial") {
-            // Apply Big Tech Smart Rendering
-            renderSmartText(currentEn, data.en);
+            latestPartialData = { en: data.en, vi: data.vi };
             
-            currentVi.innerHTML = ''; // Keep Vietnamese empty in the bottom box
+            // Throttle rendering to max 10 FPS to eliminate visual layout thrashing/jittering
+            if (!partialTimeout) {
+                partialTimeout = setTimeout(() => {
+                    if (latestPartialData) {
+                        currentEn.innerHTML = formatSentences(latestPartialData.en);
+                        currentVi.innerHTML = ''; // Keep Vietnamese empty in the bottom box
+                    }
+                    partialTimeout = null;
+                }, 100);
+            }
             
             // NO fade-up animation here to prevent jerkiness!
         } else {
             // It's final! 
-            // We NO LONGER merge sentences. The user wants strict alternating (En, Vi, En, Vi).
-            // This also completely prevents massive paragraphs from forming and eliminates all replace jitter.
+            if (partialTimeout) {
+                clearTimeout(partialTimeout);
+                partialTimeout = null;
+            }
+            
+            const formattedEn = formatSentences(data.en);
+            const formattedVi = formatSentences(data.vi);
             
             const historyItem = document.createElement('div');
             historyItem.className = 'history-item fade-up';
             historyItem.innerHTML = `
-                <div class="en-text">${data.en}</div>
-                <div class="vi-text">${data.vi}</div>
+                <div class="en-text">${formattedEn}</div>
+                <div class="vi-text">${formattedVi}</div>
             `;
             // Append it to historyBox
             historyBox.appendChild(historyItem);
@@ -144,6 +173,7 @@ function connectWebSocket() {
             // Clear the real-time box so it's clean for the next sentence
             currentEn.innerHTML = '';
             currentVi.innerHTML = '';
+            latestPartialData = null; // Reset fallback
         }
         
         if (isRecording) {
@@ -334,8 +364,17 @@ voiceBtn.addEventListener('click', () => {
     }
 });
 
-settingsBtn.addEventListener('click', () => {
+settingsBtn.addEventListener('click', (event) => {
     settingsPanel.classList.toggle('hidden');
+});
+
+// Close settings panel when clicking outside
+document.addEventListener('click', (event) => {
+    if (!settingsPanel.contains(event.target) && !settingsBtn.contains(event.target)) {
+        if (!settingsPanel.classList.contains('hidden')) {
+            settingsPanel.classList.add('hidden');
+        }
+    }
 });
 
 // Theme Toggle Logic
